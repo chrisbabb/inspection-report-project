@@ -13,7 +13,6 @@ export async function createDraftReport(input: ReportCreateInput, sellerUserId: 
       sellerUserId,
       inspectionDate: input.inspectionDate,
       title: input.title,
-      priceCents: input.priceCents ?? DEFAULT_REPORT_PURCHASE_PRICE_CENTS,
       status: "DRAFT",
       extractionStatus: "PENDING",
     },
@@ -190,7 +189,6 @@ export async function updateSellerReport(
       inspectionDate: input.inspectionDate,
       title: input.title === undefined ? undefined : input.title,
       summary: input.summary === undefined ? undefined : input.summary,
-      priceCents: input.priceCents,
       status: input.status,
       publishedAt:
         input.status === undefined
