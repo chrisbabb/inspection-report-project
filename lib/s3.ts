@@ -1,4 +1,5 @@
-import { S3Client } from "@aws-sdk/client-s3";
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { env } from "@/lib/env";
 
 const globalForS3 = globalThis as unknown as {
@@ -22,3 +23,19 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 export const S3_BUCKET = env.S3_BUCKET;
+
+export async function createPresignedUploadUrl(params: {
+  key: string;
+  contentType: string;
+  expiresIn?: number;
+}) {
+  const command = new PutObjectCommand({
+    Bucket: S3_BUCKET,
+    Key: params.key,
+    ContentType: params.contentType,
+  });
+
+  return getSignedUrl(s3, command, {
+    expiresIn: params.expiresIn ?? 300,
+  });
+}

@@ -12,7 +12,8 @@
     "db:logs": "docker compose logs -f"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1001.0",
+    "@aws-sdk/client-s3": "^3.1007.0",
+    "@aws-sdk/s3-request-presigner": "^3.1007.0",
     "@clerk/clerk-react": "^5.61.3",
     "@clerk/nextjs": "^7.0.0",
     "@prisma/client": "^6.19.2",
