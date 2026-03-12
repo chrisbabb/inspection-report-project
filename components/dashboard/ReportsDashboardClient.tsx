@@ -1,6 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import PropertyAutocompleteInput, {
+  type SelectedPropertyAddress,
+} from "@/components/dashboard/PropertyAutocompleteInput";
 
 type ReportFile = {
   id: string;
@@ -48,18 +51,23 @@ type PropertyCreateResponse = {
   updatedAt: string;
 };
 
+type UploadUrlResponse = {
+  reportId: string;
+  kind: "PDF" | "IMAGE";
+  filename: string;
+  contentType: string;
+  fileId: string;
+  storageKey: string;
+  uploadUrl: string;
+};
+
 type ApiResponse<T> =
   | { ok: true; data: T }
   | { ok: false; error: { code: string; message: string; details?: unknown } };
 
 type CreateReportFormState = {
-  placeId: string;
-  street: string;
-  city: string;
-  state: string;
-  zip: string;
-  lat: string;
-  lng: string;
+  addressQuery: string;
+  selectedAddress: SelectedPropertyAddress | null;
   inspectionDate: string;
   title: string;
 };
@@ -77,8 +85,8 @@ function toDateInputValue(isoString: string) {
   return date.toISOString().slice(0, 10);
 }
 
-function buildFormattedAddress(form: CreateReportFormState) {
-  return `${form.street.trim()}, ${form.city.trim()}, ${form.state.trim()} ${form.zip.trim()}`;
+function getFileKind(file: File): "PDF" | "IMAGE" {
+  return file.type === "application/pdf" ? "PDF" : "IMAGE";
 }
 
 export default function ReportsDashboardClient() {
@@ -87,13 +95,8 @@ export default function ReportsDashboardClient() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [createForm, setCreateForm] = useState<CreateReportFormState>({
-    placeId: "",
-    street: "",
-    city: "",
-    state: "",
-    zip: "",
-    lat: "",
-    lng: "",
+    addressQuery: "",
+    selectedAddress: null,
     inspectionDate: "",
     title: "",
   });
@@ -109,6 +112,11 @@ export default function ReportsDashboardClient() {
   const [deletingReportIds, setDeletingReportIds] = useState<Record<string, boolean>>(
     {},
   );
+  const [uploadingReportIds, setUploadingReportIds] = useState<Record<string, boolean>>(
+    {},
+  );
+
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   async function loadReports() {
     setLoading(true);
@@ -161,22 +169,19 @@ export default function ReportsDashboardClient() {
     setErrorMessage(null);
 
     try {
-      const lat = Number(createForm.lat);
-      const lng = Number(createForm.lng);
-
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-        throw new Error("Latitude and longitude must be valid numbers.");
+      if (!createForm.selectedAddress) {
+        throw new Error("Please select a property address from the suggestions.");
       }
 
       const propertyPayload = {
-        placeId: createForm.placeId.trim(),
-        formattedAddress: buildFormattedAddress(createForm),
-        street: createForm.street.trim(),
-        city: createForm.city.trim(),
-        state: createForm.state.trim(),
-        zip: createForm.zip.trim(),
-        lat,
-        lng,
+        placeId: createForm.selectedAddress.placeId,
+        formattedAddress: createForm.selectedAddress.formattedAddress,
+        street: createForm.selectedAddress.street,
+        city: createForm.selectedAddress.city,
+        state: createForm.selectedAddress.state,
+        zip: createForm.selectedAddress.zip,
+        lat: createForm.selectedAddress.lat,
+        lng: createForm.selectedAddress.lng,
       };
 
       const propertyResponse = await fetch("/api/properties", {
@@ -215,13 +220,8 @@ export default function ReportsDashboardClient() {
       }
 
       setCreateForm({
-        placeId: "",
-        street: "",
-        city: "",
-        state: "",
-        zip: "",
-        lat: "",
-        lng: "",
+        addressQuery: "",
+        selectedAddress: null,
         inspectionDate: "",
         title: "",
       });
@@ -307,6 +307,81 @@ export default function ReportsDashboardClient() {
     }
   }
 
+  async function handleFileSelected(reportId: string, file: File | null) {
+    if (!file) return;
+
+    setUploadingReportIds((prev) => ({ ...prev, [reportId]: true }));
+    setErrorMessage(null);
+
+    try {
+      const uploadRequestPayload = {
+        kind: getFileKind(file),
+        filename: file.name,
+        contentType: file.type,
+      };
+
+      const uploadUrlResponse = await fetch(`/api/reports/${reportId}/upload-url`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(uploadRequestPayload),
+      });
+
+      const uploadUrlJson: ApiResponse<UploadUrlResponse> =
+        await uploadUrlResponse.json();
+
+      if (!uploadUrlJson.ok) {
+        throw new Error(uploadUrlJson.error.message);
+      }
+
+      const uploadResponse = await fetch(uploadUrlJson.data.uploadUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": file.type,
+        },
+        body: file,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error("Failed to upload file to storage.");
+      }
+
+      const registerResponse = await fetch(`/api/reports/${reportId}/files`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          kind: uploadUrlJson.data.kind,
+          storageKey: uploadUrlJson.data.storageKey,
+          originalFilename: file.name,
+          mimeType: file.type,
+          sizeBytes: file.size,
+          sortOrder: 0,
+        }),
+      });
+
+      const registerJson: ApiResponse<unknown> = await registerResponse.json();
+
+      if (!registerJson.ok) {
+        throw new Error(registerJson.error.message);
+      }
+
+      if (fileInputRefs.current[reportId]) {
+        fileInputRefs.current[reportId]!.value = "";
+      }
+
+      await loadReports();
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Failed to upload file",
+      );
+    } finally {
+      setUploadingReportIds((prev) => ({ ...prev, [reportId]: false }));
+    }
+  }
+
   return (
     <div className="mx-auto max-w-6xl space-y-8 px-4 py-8">
       <div>
@@ -325,92 +400,28 @@ export default function ReportsDashboardClient() {
       <section className="rounded-2xl border bg-white p-6 shadow-sm">
         <h2 className="text-xl font-semibold">Create Draft Report</h2>
         <p className="mt-1 text-sm text-gray-600">
-          Enter property details. For now, use a unique place ID manually. We’ll
-          replace this with Google Places autocomplete in a later step.
+          Search for the property address, select it, then create the report.
         </p>
 
         <form onSubmit={handleCreateReport} className="mt-6 grid gap-4 md:grid-cols-2">
-          <label className="space-y-1">
-            <span className="text-sm font-medium">Place ID</span>
-            <input
-              className="w-full rounded-lg border px-3 py-2"
-              value={createForm.placeId}
-              onChange={(e) =>
-                setCreateForm((prev) => ({ ...prev, placeId: e.target.value }))
+          <label className="space-y-1 md:col-span-2">
+            <span className="text-sm font-medium">Property Address</span>
+            <PropertyAutocompleteInput
+              value={createForm.addressQuery}
+              onChange={(value) =>
+                setCreateForm((prev) => ({
+                  ...prev,
+                  addressQuery: value,
+                  selectedAddress: null,
+                }))
               }
-              required
-            />
-          </label>
-
-          <label className="space-y-1">
-            <span className="text-sm font-medium">Street</span>
-            <input
-              className="w-full rounded-lg border px-3 py-2"
-              value={createForm.street}
-              onChange={(e) =>
-                setCreateForm((prev) => ({ ...prev, street: e.target.value }))
+              onSelect={(address) =>
+                setCreateForm((prev) => ({
+                  ...prev,
+                  addressQuery: address.formattedAddress,
+                  selectedAddress: address,
+                }))
               }
-              required
-            />
-          </label>
-
-          <label className="space-y-1">
-            <span className="text-sm font-medium">City</span>
-            <input
-              className="w-full rounded-lg border px-3 py-2"
-              value={createForm.city}
-              onChange={(e) =>
-                setCreateForm((prev) => ({ ...prev, city: e.target.value }))
-              }
-              required
-            />
-          </label>
-
-          <label className="space-y-1">
-            <span className="text-sm font-medium">State</span>
-            <input
-              className="w-full rounded-lg border px-3 py-2"
-              value={createForm.state}
-              onChange={(e) =>
-                setCreateForm((prev) => ({ ...prev, state: e.target.value }))
-              }
-              required
-            />
-          </label>
-
-          <label className="space-y-1">
-            <span className="text-sm font-medium">ZIP</span>
-            <input
-              className="w-full rounded-lg border px-3 py-2"
-              value={createForm.zip}
-              onChange={(e) =>
-                setCreateForm((prev) => ({ ...prev, zip: e.target.value }))
-              }
-              required
-            />
-          </label>
-
-          <label className="space-y-1">
-            <span className="text-sm font-medium">Latitude</span>
-            <input
-              className="w-full rounded-lg border px-3 py-2"
-              value={createForm.lat}
-              onChange={(e) =>
-                setCreateForm((prev) => ({ ...prev, lat: e.target.value }))
-              }
-              required
-            />
-          </label>
-
-          <label className="space-y-1">
-            <span className="text-sm font-medium">Longitude</span>
-            <input
-              className="w-full rounded-lg border px-3 py-2"
-              value={createForm.lng}
-              onChange={(e) =>
-                setCreateForm((prev) => ({ ...prev, lng: e.target.value }))
-              }
-              required
             />
           </label>
 
@@ -430,7 +441,7 @@ export default function ReportsDashboardClient() {
             />
           </label>
 
-          <label className="space-y-1 md:col-span-2">
+          <label className="space-y-1">
             <span className="text-sm font-medium">Title</span>
             <input
               className="w-full rounded-lg border px-3 py-2"
@@ -440,6 +451,13 @@ export default function ReportsDashboardClient() {
               }
             />
           </label>
+
+          {createForm.selectedAddress ? (
+            <div className="md:col-span-2 rounded-lg border bg-gray-50 px-4 py-3 text-sm text-gray-700">
+              <div><strong>Selected:</strong> {createForm.selectedAddress.formattedAddress}</div>
+              <div><strong>Place ID:</strong> {createForm.selectedAddress.placeId}</div>
+            </div>
+          ) : null}
 
           <div className="md:col-span-2">
             <button
@@ -576,6 +594,31 @@ export default function ReportsDashboardClient() {
                           }
                         />
                       </label>
+
+                      <div className="md:col-span-2 rounded-lg border bg-gray-50 p-4">
+                        <div className="mb-3 text-sm font-medium">Upload Inspection File</div>
+                        <input
+                          ref={(el) => {
+                            fileInputRefs.current[report.id] = el;
+                          }}
+                          type="file"
+                          accept=".pdf,image/png,image/jpeg,image/webp"
+                          onChange={(e) =>
+                            void handleFileSelected(
+                              report.id,
+                              e.target.files?.[0] ?? null,
+                            )
+                          }
+                          disabled={uploadingReportIds[report.id]}
+                          className="block w-full text-sm"
+                        />
+                        <p className="mt-2 text-xs text-gray-500">
+                          Allowed: PDF, PNG, JPG, WEBP
+                        </p>
+                        {uploadingReportIds[report.id] ? (
+                          <p className="mt-2 text-sm text-gray-700">Uploading file...</p>
+                        ) : null}
+                      </div>
 
                       <div className="md:col-span-2 flex flex-wrap gap-3">
                         <button
