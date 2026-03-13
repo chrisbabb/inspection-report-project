@@ -64,8 +64,26 @@ export async function PATCH(request: Request, context: RouteContext) {
 
       return apiSuccess(updated);
     } catch (error) {
-      if (error instanceof Error && error.message === "FORBIDDEN") {
-        return apiError("FORBIDDEN", "You do not own this report", 403);
+      if (error instanceof Error) {
+        if (error.message === "FORBIDDEN") {
+          return apiError("FORBIDDEN", "You do not own this report", 403);
+        }
+
+        if (error.message === "PUBLISH_REQUIRES_FILE") {
+          return apiError(
+            "CONFLICT",
+            "A report must have at least one attached file before it can be published.",
+            409,
+          );
+        }
+
+        if (error.message === "PUBLISH_REQUIRES_PDF") {
+          return apiError(
+            "CONFLICT",
+            "A report must include at least one PDF file before it can be published.",
+            409,
+          );
+        }
       }
 
       throw error;

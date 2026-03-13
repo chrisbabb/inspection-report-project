@@ -13,6 +13,7 @@ export async function createDraftReport(input: ReportCreateInput, sellerUserId: 
       sellerUserId,
       inspectionDate: input.inspectionDate,
       title: input.title,
+      priceCents: DEFAULT_REPORT_PURCHASE_PRICE_CENTS,
       status: "DRAFT",
       extractionStatus: "PENDING",
     },
@@ -168,6 +169,13 @@ export async function updateSellerReport(
       id: true,
       sellerUserId: true,
       status: true,
+      files: {
+        select: {
+          id: true,
+          kind: true,
+          mimeType: true,
+        },
+      },
     },
   });
 
@@ -182,6 +190,20 @@ export async function updateSellerReport(
   const nextStatus = input.status ?? existing.status;
   const shouldPublish = nextStatus === "PUBLISHED";
   const shouldRemove = nextStatus === "REMOVED";
+
+  if (shouldPublish) {
+    if (existing.files.length === 0) {
+      throw new Error("PUBLISH_REQUIRES_FILE");
+    }
+
+    const hasPdf = existing.files.some(
+      (file) => file.kind === "PDF" || file.mimeType === "application/pdf",
+    );
+
+    if (!hasPdf) {
+      throw new Error("PUBLISH_REQUIRES_PDF");
+    }
+  }
 
   return db.report.update({
     where: { id: reportId },
@@ -249,6 +271,43 @@ export async function softDeleteSellerReport(reportId: string, sellerUserId: str
       status: true,
       removedAt: true,
       updatedAt: true,
+    },
+  });
+}
+
+export async function getPublicReportDetail(reportId: string) {
+  return db.report.findFirst({
+    where: {
+      id: reportId,
+      status: "PUBLISHED",
+    },
+    select: {
+      id: true,
+      title: true,
+      summary: true,
+      inspectionDate: true,
+      status: true,
+      createdAt: true,
+      property: {
+        select: {
+          id: true,
+          formattedAddress: true,
+          city: true,
+          state: true,
+          zip: true,
+        },
+      },
+      files: {
+        orderBy: {
+          sortOrder: "asc",
+        },
+        select: {
+          id: true,
+          kind: true,
+          originalFilename: true,
+          mimeType: true,
+        },
+      },
     },
   });
 }

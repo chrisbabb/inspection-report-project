@@ -89,6 +89,15 @@ function getFileKind(file: File): "PDF" | "IMAGE" {
   return file.type === "application/pdf" ? "PDF" : "IMAGE";
 }
 
+const inputClass =
+  "w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-sky-400 dark:focus:ring-sky-900/30";
+
+const panelClass =
+  "rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950";
+
+const subPanelClass =
+  "rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900";
+
 export default function ReportsDashboardClient() {
   const [reports, setReports] = useState<SellerReport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -383,287 +392,298 @@ export default function ReportsDashboardClient() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8 px-4 py-8">
-      <div>
-        <h1 className="text-3xl font-semibold">My Home Inspection Reports</h1>
-        <p className="mt-2 text-sm text-gray-600">
-          Create, update, and manage your report listings.
-        </p>
-      </div>
-
-      {errorMessage ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {errorMessage}
+    <div className="min-h-[calc(100vh-72px)] bg-[#f3f6fb] px-4 py-6 text-slate-900 dark:bg-slate-900 dark:text-slate-100">
+      <div className="mx-auto max-w-6xl space-y-8">
+        <div>
+          <h1 className="text-3xl font-semibold">My Home Inspection Reports</h1>
+          <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+            Create, update, and manage your report listings.
+          </p>
         </div>
-      ) : null}
 
-      <section className="rounded-2xl border bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-semibold">Create Draft Report</h2>
-        <p className="mt-1 text-sm text-gray-600">
-          Search for the property address, select it, then create the report.
-        </p>
+        {errorMessage ? (
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
+            {errorMessage}
+          </div>
+        ) : null}
 
-        <form onSubmit={handleCreateReport} className="mt-6 grid gap-4 md:grid-cols-2">
-          <label className="space-y-1 md:col-span-2">
-            <span className="text-sm font-medium">Property Address</span>
-            <PropertyAutocompleteInput
-              value={createForm.addressQuery}
-              onChange={(value) =>
-                setCreateForm((prev) => ({
-                  ...prev,
-                  addressQuery: value,
-                  selectedAddress: null,
-                }))
-              }
-              onSelect={(address) =>
-                setCreateForm((prev) => ({
-                  ...prev,
-                  addressQuery: address.formattedAddress,
-                  selectedAddress: address,
-                }))
-              }
-            />
-          </label>
+        <section className={panelClass}>
+          <h2 className="text-xl font-semibold">Create Draft Report</h2>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+            Search for the property address, select it, then create the report.
+          </p>
 
-          <label className="space-y-1">
-            <span className="text-sm font-medium">Inspection Date</span>
-            <input
-              type="date"
-              className="w-full rounded-lg border px-3 py-2"
-              value={createForm.inspectionDate}
-              onChange={(e) =>
-                setCreateForm((prev) => ({
-                  ...prev,
-                  inspectionDate: e.target.value,
-                }))
-              }
-              required
-            />
-          </label>
+          <form onSubmit={handleCreateReport} className="mt-6 grid gap-4 md:grid-cols-2">
+            <label className="space-y-1 md:col-span-2">
+              <span className="text-sm font-medium">Property Address</span>
+              <PropertyAutocompleteInput
+                value={createForm.addressQuery}
+                onChange={(value) =>
+                  setCreateForm((prev) => ({
+                    ...prev,
+                    addressQuery: value,
+                    selectedAddress: null,
+                  }))
+                }
+                onSelect={(address) =>
+                  setCreateForm((prev) => ({
+                    ...prev,
+                    addressQuery: address.formattedAddress,
+                    selectedAddress: address,
+                  }))
+                }
+              />
+            </label>
 
-          <label className="space-y-1">
-            <span className="text-sm font-medium">Title</span>
-            <input
-              className="w-full rounded-lg border px-3 py-2"
-              value={createForm.title}
-              onChange={(e) =>
-                setCreateForm((prev) => ({ ...prev, title: e.target.value }))
-              }
-            />
-          </label>
+            <label className="space-y-1">
+              <span className="text-sm font-medium">Inspection Date</span>
+              <input
+                type="date"
+                className={inputClass}
+                value={createForm.inspectionDate}
+                onChange={(e) =>
+                  setCreateForm((prev) => ({
+                    ...prev,
+                    inspectionDate: e.target.value,
+                  }))
+                }
+                required
+              />
+            </label>
 
-          {createForm.selectedAddress ? (
-            <div className="md:col-span-2 rounded-lg border bg-gray-50 px-4 py-3 text-sm text-gray-700">
-              <div><strong>Selected:</strong> {createForm.selectedAddress.formattedAddress}</div>
-              <div><strong>Place ID:</strong> {createForm.selectedAddress.placeId}</div>
+            <label className="space-y-1">
+              <span className="text-sm font-medium">Title</span>
+              <input
+                className={inputClass}
+                value={createForm.title}
+                onChange={(e) =>
+                  setCreateForm((prev) => ({ ...prev, title: e.target.value }))
+                }
+              />
+            </label>
+
+            {createForm.selectedAddress ? (
+              <div className={`${subPanelClass} md:col-span-2`}>
+                <div className="text-sm">
+                  <strong>Selected:</strong> {createForm.selectedAddress.formattedAddress}
+                </div>
+                <div className="mt-1 text-sm">
+                  <strong>Place ID:</strong> {createForm.selectedAddress.placeId}
+                </div>
+              </div>
+            ) : null}
+
+            <div className="md:col-span-2">
+              <button
+                type="submit"
+                disabled={createSubmitting}
+                className="rounded-2xl bg-sky-500 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-600 disabled:opacity-50"
+              >
+                {createSubmitting ? "Creating..." : "Create Report"}
+              </button>
             </div>
-          ) : null}
+          </form>
+        </section>
 
-          <div className="md:col-span-2">
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold">Your Reports</h2>
             <button
-              type="submit"
-              disabled={createSubmitting}
-              className="rounded-lg bg-black px-4 py-2 text-white disabled:opacity-50"
+              type="button"
+              onClick={() => void loadReports()}
+              className="rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
             >
-              {createSubmitting ? "Creating..." : "Create Report"}
+              Refresh
             </button>
           </div>
-        </form>
-      </section>
 
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Your Reports</h2>
-          <button
-            type="button"
-            onClick={() => void loadReports()}
-            className="rounded-lg border px-4 py-2 text-sm"
-          >
-            Refresh
-          </button>
-        </div>
+          {loading ? (
+            <div className={panelClass}>Loading reports...</div>
+          ) : reports.length === 0 ? (
+            <div className={panelClass}>No reports yet.</div>
+          ) : (
+            <div className="space-y-6">
+              {reports.map((report) => {
+                const form = editForms[report.id];
 
-        {loading ? (
-          <div className="rounded-2xl border bg-white p-6 shadow-sm">
-            Loading reports...
-          </div>
-        ) : reports.length === 0 ? (
-          <div className="rounded-2xl border bg-white p-6 shadow-sm">
-            No reports yet.
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {reports.map((report) => {
-              const form = editForms[report.id];
-
-              return (
-                <article
-                  key={report.id}
-                  className="rounded-2xl border bg-white p-6 shadow-sm"
-                >
-                  <div className="flex flex-col gap-2 border-b pb-4 md:flex-row md:items-start md:justify-between">
-                    <div>
-                      <h3 className="text-lg font-semibold">
-                        {report.title || "Untitled Report"}
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        {report.property.formattedAddress}
-                      </p>
-                      <p className="mt-1 text-sm text-gray-500">
-                        Status: <span className="font-medium">{report.status}</span>
-                      </p>
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      <div>Inspection: {toDateInputValue(report.inspectionDate)}</div>
-                      <div>Files: {report.files.length}</div>
-                      <div>Extraction: {report.extractionStatus}</div>
-                    </div>
-                  </div>
-
-                  {form ? (
-                    <div className="mt-6 grid gap-4 md:grid-cols-2">
-                      <label className="space-y-1">
-                        <span className="text-sm font-medium">Title</span>
-                        <input
-                          className="w-full rounded-lg border px-3 py-2"
-                          value={form.title}
-                          onChange={(e) =>
-                            setEditForms((prev) => ({
-                              ...prev,
-                              [report.id]: {
-                                ...prev[report.id],
-                                title: e.target.value,
-                              },
-                            }))
-                          }
-                        />
-                      </label>
-
-                      <label className="space-y-1">
-                        <span className="text-sm font-medium">Inspection Date</span>
-                        <input
-                          type="date"
-                          className="w-full rounded-lg border px-3 py-2"
-                          value={form.inspectionDate}
-                          onChange={(e) =>
-                            setEditForms((prev) => ({
-                              ...prev,
-                              [report.id]: {
-                                ...prev[report.id],
-                                inspectionDate: e.target.value,
-                              },
-                            }))
-                          }
-                        />
-                      </label>
-
-                      <label className="space-y-1 md:col-span-2">
-                        <span className="text-sm font-medium">Status</span>
-                        <select
-                          className="w-full rounded-lg border px-3 py-2"
-                          value={form.status}
-                          onChange={(e) =>
-                            setEditForms((prev) => ({
-                              ...prev,
-                              [report.id]: {
-                                ...prev[report.id],
-                                status: e.target.value as "DRAFT" | "PUBLISHED" | "REMOVED",
-                              },
-                            }))
-                          }
-                        >
-                          <option value="DRAFT">DRAFT</option>
-                          <option value="PUBLISHED">PUBLISHED</option>
-                          <option value="REMOVED">REMOVED</option>
-                        </select>
-                      </label>
-
-                      <label className="space-y-1 md:col-span-2">
-                        <span className="text-sm font-medium">Summary</span>
-                        <textarea
-                          className="min-h-28 w-full rounded-lg border px-3 py-2"
-                          value={form.summary}
-                          onChange={(e) =>
-                            setEditForms((prev) => ({
-                              ...prev,
-                              [report.id]: {
-                                ...prev[report.id],
-                                summary: e.target.value,
-                              },
-                            }))
-                          }
-                        />
-                      </label>
-
-                      <div className="md:col-span-2 rounded-lg border bg-gray-50 p-4">
-                        <div className="mb-3 text-sm font-medium">Upload Inspection File</div>
-                        <input
-                          ref={(el) => {
-                            fileInputRefs.current[report.id] = el;
-                          }}
-                          type="file"
-                          accept=".pdf,image/png,image/jpeg,image/webp"
-                          onChange={(e) =>
-                            void handleFileSelected(
-                              report.id,
-                              e.target.files?.[0] ?? null,
-                            )
-                          }
-                          disabled={uploadingReportIds[report.id]}
-                          className="block w-full text-sm"
-                        />
-                        <p className="mt-2 text-xs text-gray-500">
-                          Allowed: PDF, PNG, JPG, WEBP
+                return (
+                  <article key={report.id} className={panelClass}>
+                    <div className="flex flex-col gap-2 border-b border-slate-200 pb-4 dark:border-slate-800 md:flex-row md:items-start md:justify-between">
+                      <div>
+                        <h3 className="text-lg font-semibold">
+                          {report.title || "Untitled Report"}
+                        </h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          {report.property.formattedAddress}
                         </p>
-                        {uploadingReportIds[report.id] ? (
-                          <p className="mt-2 text-sm text-gray-700">Uploading file...</p>
-                        ) : null}
+                        <div className="mt-1 space-y-1 text-sm text-slate-500 dark:text-slate-400">
+                          <p>
+                            Status: <span className="font-medium">{report.status}</span>
+                          </p>
+                          {report.status !== "PUBLISHED" ? (
+                            <p className="text-xs text-amber-700 dark:text-amber-300">
+                              Publishing requires at least one attached PDF file.
+                            </p>
+                          ) : null}
+                        </div>
                       </div>
-
-                      <div className="md:col-span-2 flex flex-wrap gap-3">
-                        <button
-                          type="button"
-                          onClick={() => void handleSaveReport(report.id)}
-                          disabled={savingReportIds[report.id]}
-                          className="rounded-lg bg-black px-4 py-2 text-white disabled:opacity-50"
-                        >
-                          {savingReportIds[report.id] ? "Saving..." : "Save Changes"}
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => void handleDeleteReport(report.id)}
-                          disabled={deletingReportIds[report.id]}
-                          className="rounded-lg border border-red-300 px-4 py-2 text-red-700 disabled:opacity-50"
-                        >
-                          {deletingReportIds[report.id] ? "Removing..." : "Remove Report"}
-                        </button>
+                      <div className="text-sm text-slate-500 dark:text-slate-400">
+                        <div>Inspection: {toDateInputValue(report.inspectionDate)}</div>
+                        <div>Files: {report.files.length}</div>
+                        <div>Extraction: {report.extractionStatus}</div>
                       </div>
                     </div>
-                  ) : null}
 
-                  {report.files.length > 0 ? (
-                    <div className="mt-6 border-t pt-4">
-                      <h4 className="text-sm font-semibold">Attached Files</h4>
-                      <ul className="mt-2 space-y-2 text-sm text-gray-600">
-                        {report.files.map((file) => (
-                          <li key={file.id} className="rounded-lg border px-3 py-2">
-                            {file.originalFilename} · {file.kind} · {file.mimeType}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : (
-                    <div className="mt-6 border-t pt-4 text-sm text-gray-500">
-                      No files attached yet.
-                    </div>
-                  )}
-                </article>
-              );
-            })}
-          </div>
-        )}
-      </section>
+                    {form ? (
+                      <div className="mt-6 grid gap-4 md:grid-cols-2">
+                        <label className="space-y-1">
+                          <span className="text-sm font-medium">Title</span>
+                          <input
+                            className={inputClass}
+                            value={form.title}
+                            onChange={(e) =>
+                              setEditForms((prev) => ({
+                                ...prev,
+                                [report.id]: {
+                                  ...prev[report.id],
+                                  title: e.target.value,
+                                },
+                              }))
+                            }
+                          />
+                        </label>
+
+                        <label className="space-y-1">
+                          <span className="text-sm font-medium">Inspection Date</span>
+                          <input
+                            type="date"
+                            className={inputClass}
+                            value={form.inspectionDate}
+                            onChange={(e) =>
+                              setEditForms((prev) => ({
+                                ...prev,
+                                [report.id]: {
+                                  ...prev[report.id],
+                                  inspectionDate: e.target.value,
+                                },
+                              }))
+                            }
+                          />
+                        </label>
+
+                        <label className="space-y-1 md:col-span-2">
+                          <span className="text-sm font-medium">Status</span>
+                          <select
+                            className={inputClass}
+                            value={form.status}
+                            onChange={(e) =>
+                              setEditForms((prev) => ({
+                                ...prev,
+                                [report.id]: {
+                                  ...prev[report.id],
+                                  status: e.target.value as "DRAFT" | "PUBLISHED" | "REMOVED",
+                                },
+                              }))
+                            }
+                          >
+                            <option value="DRAFT">DRAFT</option>
+                            <option value="PUBLISHED">PUBLISHED</option>
+                            <option value="REMOVED">REMOVED</option>
+                          </select>
+                        </label>
+
+                        <label className="space-y-1 md:col-span-2">
+                          <span className="text-sm font-medium">Summary</span>
+                          <textarea
+                            className={`${inputClass} min-h-28`}
+                            value={form.summary}
+                            onChange={(e) =>
+                              setEditForms((prev) => ({
+                                ...prev,
+                                [report.id]: {
+                                  ...prev[report.id],
+                                  summary: e.target.value,
+                                },
+                              }))
+                            }
+                          />
+                        </label>
+
+                        <div className={`${subPanelClass} md:col-span-2`}>
+                          <div className="mb-3 text-sm font-medium">Upload Inspection File</div>
+                          <input
+                            ref={(el) => {
+                              fileInputRefs.current[report.id] = el;
+                            }}
+                            type="file"
+                            accept=".pdf,image/png,image/jpeg,image/webp"
+                            onChange={(e) =>
+                              void handleFileSelected(
+                                report.id,
+                                e.target.files?.[0] ?? null,
+                              )
+                            }
+                            disabled={uploadingReportIds[report.id]}
+                            className="block w-full text-sm"
+                          />
+                          <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                            Allowed: PDF, PNG, JPG, WEBP
+                          </p>
+                          {uploadingReportIds[report.id] ? (
+                            <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">
+                              Uploading file...
+                            </p>
+                          ) : null}
+                        </div>
+
+                        <div className="flex flex-wrap gap-3 md:col-span-2">
+                          <button
+                            type="button"
+                            onClick={() => void handleSaveReport(report.id)}
+                            disabled={savingReportIds[report.id]}
+                            className="rounded-2xl bg-sky-500 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-600 disabled:opacity-50"
+                          >
+                            {savingReportIds[report.id] ? "Saving..." : "Save Changes"}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => void handleDeleteReport(report.id)}
+                            disabled={deletingReportIds[report.id]}
+                            className="rounded-2xl border border-red-300 px-5 py-3 text-sm font-semibold text-red-700 disabled:opacity-50 dark:border-red-800 dark:text-red-300"
+                          >
+                            {deletingReportIds[report.id] ? "Removing..." : "Remove Report"}
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {report.files.length > 0 ? (
+                      <div className="mt-6 border-t border-slate-200 pt-4 dark:border-slate-800">
+                        <h4 className="text-sm font-semibold">Attached Files</h4>
+                        <ul className="mt-2 space-y-2 text-sm text-slate-600 dark:text-slate-400">
+                          {report.files.map((file) => (
+                            <li
+                              key={file.id}
+                              className="rounded-2xl border border-slate-200 px-4 py-3 dark:border-slate-800"
+                            >
+                              {file.originalFilename} · {file.kind} · {file.mimeType}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : (
+                      <div className="mt-6 border-t border-slate-200 pt-4 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                        No files attached yet.
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      </div>
     </div>
   );
 }

@@ -1,20 +1,67 @@
 import type { Metadata } from "next";
-import { ClerkProvider } from "@clerk/nextjs";
+import { ClerkProvider, UserButton } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
+import { Roboto } from "next/font/google";
+import Link from "next/link";
+import ThemeToggle from "@/components/theme/ThemeToggle";
+import "./globals.css";
+
+const roboto = Roboto({
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+});
 
 export const metadata: Metadata = {
-  title: "Inspection Reports",
-  description: "Marketplace",
+  title: "Inspection Report Marketplace",
+  description: "Buy and sell home inspection reports.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
+  const { userId } = await auth();
+
   return (
     <ClerkProvider>
       <html lang="en">
-        <body>{children}</body>
+        <body className={`${roboto.className} min-h-screen overflow-x-hidden`}>
+          <header className="site-header h-[72px] border-b">
+            <div className="mx-auto flex h-full w-full items-center justify-between px-5">
+              <Link href="/" className="text-xl font-semibold tracking-tight">
+                Inspection Report Marketplace
+              </Link>
+
+              <div className="flex items-center gap-3">
+                <ThemeToggle />
+
+                {userId ? (
+                  <>
+                    <Link href="/dashboard/reports" className="text-sm">
+                      Dashboard
+                    </Link>
+                    <UserButton />
+                  </>
+                ) : (
+                  <>
+                    <Link href="/sign-in" className="text-sm">
+                      Sign In
+                    </Link>
+                    <Link
+                      href="/sign-up"
+                      className="rounded-lg bg-black px-4 py-2 text-sm text-white"
+                    >
+                      Sign Up
+                    </Link>
+                  </>
+                )}
+              </div>
+            </div>
+          </header>
+
+          <div className="min-h-[calc(100vh-72px)]">{children}</div>
+        </body>
       </html>
     </ClerkProvider>
   );
