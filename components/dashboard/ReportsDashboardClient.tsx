@@ -89,14 +89,12 @@ function getFileKind(file: File): "PDF" | "IMAGE" {
   return file.type === "application/pdf" ? "PDF" : "IMAGE";
 }
 
-const inputClass =
-  "w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-sky-400 dark:focus:ring-sky-900/30";
-
-const panelClass =
-  "rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950";
-
-const subPanelClass =
-  "rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900";
+const inputClass = "dashboard-input";
+const panelClass = "dashboard-panel";
+const subPanelClass = "dashboard-subpanel";
+const mutedTextClass = "dashboard-muted";
+const subtleTextClass = "dashboard-subtle";
+const dividerClass = "dashboard-divider";
 
 export default function ReportsDashboardClient() {
   const [reports, setReports] = useState<SellerReport[]>([]);
@@ -392,11 +390,11 @@ export default function ReportsDashboardClient() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-72px)] bg-[#f3f6fb] px-4 py-6 text-slate-900 dark:bg-slate-900 dark:text-slate-100">
+    <div className="dashboard-page min-h-[calc(100vh-72px)] px-4 py-6">
       <div className="mx-auto max-w-6xl space-y-8">
         <div>
           <h1 className="text-3xl font-semibold">My Home Inspection Reports</h1>
-          <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+          <p className={`${mutedTextClass} mt-2 text-sm`}>
             Create, update, and manage your report listings.
           </p>
         </div>
@@ -409,7 +407,7 @@ export default function ReportsDashboardClient() {
 
         <section className={panelClass}>
           <h2 className="text-xl font-semibold">Create Draft Report</h2>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+          <p className={`${mutedTextClass} mt-1 text-sm`}>
             Search for the property address, select it, then create the report.
           </p>
 
@@ -508,15 +506,15 @@ export default function ReportsDashboardClient() {
 
                 return (
                   <article key={report.id} className={panelClass}>
-                    <div className="flex flex-col gap-2 border-b border-slate-200 pb-4 dark:border-slate-800 md:flex-row md:items-start md:justify-between">
+                    <div className={`${dividerClass} flex flex-col gap-2 border-b pb-4 md:flex-row md:items-start md:justify-between`}>
                       <div>
                         <h3 className="text-lg font-semibold">
                           {report.title || "Untitled Report"}
                         </h3>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                        <p className={`${mutedTextClass} text-sm`}>
                           {report.property.formattedAddress}
                         </p>
-                        <div className="mt-1 space-y-1 text-sm text-slate-500 dark:text-slate-400">
+                        <div className={`${subtleTextClass} mt-1 space-y-1 text-sm`}>
                           <p>
                             Status: <span className="font-medium">{report.status}</span>
                           </p>
@@ -527,7 +525,7 @@ export default function ReportsDashboardClient() {
                           ) : null}
                         </div>
                       </div>
-                      <div className="text-sm text-slate-500 dark:text-slate-400">
+                      <div className={`${subtleTextClass} text-sm`}>
                         <div>Inspection: {toDateInputValue(report.inspectionDate)}</div>
                         <div>Files: {report.files.length}</div>
                         <div>Extraction: {report.extractionStatus}</div>
@@ -626,11 +624,11 @@ export default function ReportsDashboardClient() {
                             disabled={uploadingReportIds[report.id]}
                             className="block w-full text-sm"
                           />
-                          <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                          <p className={`${subtleTextClass} mt-2 text-xs`}>
                             Allowed: PDF, PNG, JPG, WEBP
                           </p>
                           {uploadingReportIds[report.id] ? (
-                            <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">
+                            <p className={`${mutedTextClass} mt-2 text-sm`}>
                               Uploading file...
                             </p>
                           ) : null}
@@ -659,9 +657,9 @@ export default function ReportsDashboardClient() {
                     ) : null}
 
                     {report.files.length > 0 ? (
-                      <div className="mt-6 border-t border-slate-200 pt-4 dark:border-slate-800">
+                      <div className={`${dividerClass} mt-6 border-t pt-4`}>
                         <h4 className="text-sm font-semibold">Attached Files</h4>
-                        <ul className="mt-2 space-y-2 text-sm text-slate-600 dark:text-slate-400">
+                        <ul className={`${mutedTextClass} mt-2 space-y-2 text-sm`}>
                           {report.files.map((file) => (
                             <li
                               key={file.id}
@@ -673,7 +671,7 @@ export default function ReportsDashboardClient() {
                         </ul>
                       </div>
                     ) : (
-                      <div className="mt-6 border-t border-slate-200 pt-4 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                      <div className={`${dividerClass} ${subtleTextClass} mt-6 border-t pt-4 text-sm`}>
                         No files attached yet.
                       </div>
                     )}

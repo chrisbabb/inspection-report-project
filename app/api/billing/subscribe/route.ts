@@ -1,15 +1,13 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { createReportCheckoutSession } from "@/lib/services/purchases";
+import { createSubscriptionCheckoutSession } from "@/lib/services/billing";
 
-type RouteContext = {
-  params: Promise<{
-    reportId: string;
-  }>;
+type RequestBody = {
+  interval?: "monthly" | "annual";
 };
 
-export async function POST(_: Request, context: RouteContext) {
+export async function POST(req: Request) {
   try {
     const { userId: clerkUserId } = await auth();
 
@@ -17,12 +15,21 @@ export async function POST(_: Request, context: RouteContext) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { reportId } = await context.params;
+    const body = (await req.json()) as RequestBody;
+    const interval = body.interval;
+
+    if (interval !== "monthly" && interval !== "annual") {
+      return NextResponse.json(
+        { error: "interval must be monthly or annual" },
+        { status: 400 },
+      );
+    }
 
     const user = await prisma.user.findUnique({
       where: { clerkUserId },
       select: {
         id: true,
+        email: true,
       },
     });
 
@@ -30,15 +37,16 @@ export async function POST(_: Request, context: RouteContext) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const session = await createReportCheckoutSession({
-      reportId,
-      buyerUserId: user.id,
+    const session = await createSubscriptionCheckoutSession({
+      userId: user.id,
+      userEmail: user.email,
+      interval,
     });
 
     return NextResponse.json(session);
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Failed to create purchase checkout";
+      error instanceof Error ? error.message : "Failed to create checkout session";
 
     return NextResponse.json({ error: message }, { status: 500 });
   }

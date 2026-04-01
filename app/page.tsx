@@ -10,9 +10,5 @@ export default async function HomePage({ searchParams }: PageProps) {
   const params = await searchParams;
   const query = params.q?.trim() ?? "";
 
-  return (
-    <div className="h-[calc(100vh-72px)]">
-      <ReportsMapClient query={query} />
-    </div>
-  );
+  return <ReportsMapClient query={query} />;
 }

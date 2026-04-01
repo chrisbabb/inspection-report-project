@@ -44,46 +44,53 @@ enum AccessStatus {
   REVOKED
 }
 
-model User {
-  id                     String      @id @default(cuid())
-  clerkUserId            String      @unique
-  email                  String      @unique
-  name                   String?
-  phone                  String?
-  role                   UserRole    @default(USER)
+enum WebhookEventStatus {
+  RECEIVED
+  PROCESSED
+  IGNORED
+  FAILED
+}
 
-  stripeCustomerId       String?     @unique
-  stripeConnectAccountId String?     @unique
+model User {
+  id          String   @id @default(cuid())
+  clerkUserId String   @unique
+  email       String   @unique
+  name        String?
+  phone       String?
+  role        UserRole @default(USER)
+
+  stripeCustomerId       String? @unique
+  stripeConnectAccountId String? @unique
   subscriptionStatus     String?
   subscriptionPlan       String?
 
-  createdAt              DateTime    @default(now())
-  updatedAt              DateTime    @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  reports                Report[]    @relation("SellerReports")
-  purchases              Purchase[]  @relation("BuyerPurchases")
-  reportAccesses         ReportAccess[]
-  propertyViewEvents     PropertyViewEvent[]
-  reportViewEvents       ReportViewEvent[]
-  updatedAppSettings     AppSetting[] @relation("AppSettingUpdatedBy")
-  analyticsRollups       AnalyticsDailyRollup[]
+  reports            Report[]               @relation("SellerReports")
+  purchases          Purchase[]             @relation("BuyerPurchases")
+  reportAccesses     ReportAccess[]
+  propertyViewEvents PropertyViewEvent[]
+  reportViewEvents   ReportViewEvent[]
+  updatedAppSettings AppSetting[]           @relation("AppSettingUpdatedBy")
+  analyticsRollups   AnalyticsDailyRollup[]
 
   @@index([role])
   @@index([createdAt])
 }
 
 model Property {
-  id                 String              @id @default(cuid())
-  placeId            String              @unique
-  formattedAddress   String
-  street             String
-  city               String
-  state              String
-  zip                String
-  lat                Float
-  lng                Float
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
+  id               String   @id @default(cuid())
+  placeId          String   @unique
+  formattedAddress String
+  street           String
+  city             String
+  state            String
+  zip              String
+  lat              Float
+  lng              Float
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   reports            Report[]
   propertyViewEvents PropertyViewEvent[]
@@ -97,28 +104,28 @@ model Property {
 }
 
 model Report {
-  id                String             @id @default(cuid())
-  propertyId        String
-  sellerUserId      String
-  inspectionDate    DateTime
-  status            ReportStatus       @default(DRAFT)
-  extractionStatus  ExtractionStatus   @default(PENDING)
-  priceCents        Int                @default(5000)
-  title             String?
-  summary           String?
-  uploadedAt        DateTime           @default(now())
-  publishedAt       DateTime?
-  removedAt         DateTime?
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  id               String           @id @default(cuid())
+  propertyId       String
+  sellerUserId     String
+  inspectionDate   DateTime
+  status           ReportStatus     @default(DRAFT)
+  extractionStatus ExtractionStatus @default(PENDING)
+  priceCents       Int              @default(5000)
+  title            String?
+  summary          String?
+  uploadedAt       DateTime         @default(now())
+  publishedAt      DateTime?
+  removedAt        DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 
-  property          Property           @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  seller            User               @relation("SellerReports", fields: [sellerUserId], references: [id], onDelete: Cascade)
-  files             ReportFile[]
-  purchases         Purchase[]
-  accesses          ReportAccess[]
-  reportViewEvents  ReportViewEvent[]
-  analyticsRollups  AnalyticsDailyRollup[]
+  property         Property               @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  seller           User                   @relation("SellerReports", fields: [sellerUserId], references: [id], onDelete: Cascade)
+  files            ReportFile[]
+  purchases        Purchase[]
+  accesses         ReportAccess[]
+  reportViewEvents ReportViewEvent[]
+  analyticsRollups AnalyticsDailyRollup[]
 
   @@index([propertyId, inspectionDate(sort: Desc)])
   @@index([sellerUserId, createdAt(sort: Desc)])
@@ -140,7 +147,7 @@ model ReportFile {
   sortOrder        Int            @default(0)
   createdAt        DateTime       @default(now())
 
-  report           Report         @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
 
   @@index([reportId, sortOrder])
   @@index([kind])
@@ -163,9 +170,9 @@ model Purchase {
   createdAt               DateTime       @default(now())
   updatedAt               DateTime       @updatedAt
 
-  report                  Report         @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  buyer                   User           @relation("BuyerPurchases", fields: [buyerUserId], references: [id], onDelete: Cascade)
-  access                  ReportAccess?
+  report Report        @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  buyer  User          @relation("BuyerPurchases", fields: [buyerUserId], references: [id], onDelete: Cascade)
+  access ReportAccess?
 
   @@index([buyerUserId, createdAt(sort: Desc)])
   @@index([reportId, createdAt(sort: Desc)])
@@ -174,18 +181,18 @@ model Purchase {
 }
 
 model ReportAccess {
-  id         String       @id @default(cuid())
-  reportId   String
+  id          String       @id @default(cuid())
+  reportId    String
   buyerUserId String
-  purchaseId String       @unique
-  status     AccessStatus @default(ACTIVE)
-  grantedAt  DateTime     @default(now())
-  revokedAt  DateTime?
-  createdAt  DateTime     @default(now())
+  purchaseId  String       @unique
+  status      AccessStatus @default(ACTIVE)
+  grantedAt   DateTime     @default(now())
+  revokedAt   DateTime?
+  createdAt   DateTime     @default(now())
 
-  report     Report       @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  buyer      User         @relation(fields: [buyerUserId], references: [id], onDelete: Cascade)
-  purchase   Purchase     @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  report   Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  buyer    User     @relation(fields: [buyerUserId], references: [id], onDelete: Cascade)
+  purchase Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
 
   @@unique([reportId, buyerUserId])
   @@index([buyerUserId, grantedAt(sort: Desc)])
@@ -193,15 +200,15 @@ model ReportAccess {
 }
 
 model PropertyViewEvent {
-  id            String    @id @default(cuid())
+  id            String   @id @default(cuid())
   propertyId    String
   viewerUserId  String?
   anonSessionId String?
   source        String?
-  createdAt     DateTime  @default(now())
+  createdAt     DateTime @default(now())
 
-  property      Property   @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  viewer        User?      @relation(fields: [viewerUserId], references: [id], onDelete: SetNull)
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  viewer   User?    @relation(fields: [viewerUserId], references: [id], onDelete: SetNull)
 
   @@index([propertyId, createdAt(sort: Desc)])
   @@index([viewerUserId, createdAt(sort: Desc)])
@@ -210,15 +217,15 @@ model PropertyViewEvent {
 }
 
 model ReportViewEvent {
-  id            String    @id @default(cuid())
+  id            String   @id @default(cuid())
   reportId      String
   viewerUserId  String?
   anonSessionId String?
   viewType      String?
-  createdAt     DateTime  @default(now())
+  createdAt     DateTime @default(now())
 
-  report        Report     @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  viewer        User?      @relation(fields: [viewerUserId], references: [id], onDelete: SetNull)
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  viewer User?  @relation(fields: [viewerUserId], references: [id], onDelete: SetNull)
 
   @@index([reportId, createdAt(sort: Desc)])
   @@index([viewerUserId, createdAt(sort: Desc)])
@@ -227,23 +234,23 @@ model ReportViewEvent {
 }
 
 model AnalyticsDailyRollup {
-  id                    String    @id @default(cuid())
-  date                  DateTime
-  sellerUserId          String
-  propertyId            String?
-  reportId              String?
-  propertyViews         Int       @default(0)
-  reportViews           Int       @default(0)
-  purchases             Int       @default(0)
-  grossRevenueCents     Int       @default(0)
-  sellerRevenueCents    Int       @default(0)
-  platformRevenueCents  Int       @default(0)
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  id                   String   @id @default(cuid())
+  date                 DateTime
+  sellerUserId         String
+  propertyId           String?
+  reportId             String?
+  propertyViews        Int      @default(0)
+  reportViews          Int      @default(0)
+  purchases            Int      @default(0)
+  grossRevenueCents    Int      @default(0)
+  sellerRevenueCents   Int      @default(0)
+  platformRevenueCents Int      @default(0)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
-  seller                User      @relation(fields: [sellerUserId], references: [id], onDelete: Cascade)
-  property              Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
-  report                Report?   @relation(fields: [reportId], references: [id], onDelete: SetNull)
+  seller   User      @relation(fields: [sellerUserId], references: [id], onDelete: Cascade)
+  property Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  report   Report?   @relation(fields: [reportId], references: [id], onDelete: SetNull)
 
   @@unique([date, sellerUserId, reportId])
   @@index([sellerUserId, date(sort: Desc)])
@@ -252,15 +259,31 @@ model AnalyticsDailyRollup {
 }
 
 model AppSetting {
-  id              String    @id @default(cuid())
-  key             String    @unique
+  id              String   @id @default(cuid())
+  key             String   @unique
   valueJson       Json
   description     String?
   updatedByUserId String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  updatedBy       User?     @relation("AppSettingUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  updatedBy User? @relation("AppSettingUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
 
+  @@index([createdAt])
+}
+
+model WebhookEvent {
+  id          String             @id @default(cuid())
+  provider    String
+  eventId     String             @unique
+  eventType   String
+  status      WebhookEventStatus @default(RECEIVED)
+  payloadJson Json
+  error       String?
+  processedAt DateTime?
+  createdAt   DateTime           @default(now())
+
+  @@index([provider, eventType])
+  @@index([status, createdAt])
   @@index([createdAt])
 }
