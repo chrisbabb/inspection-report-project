@@ -38,20 +38,17 @@ export default async function RootLayout({
 
                 {userId ? (
                   <>
-                    <Link href="/dashboard/reports" className="text-sm">
+                    <Link href="/dashboard/reports" className="site-nav-link text-sm font-medium">
                       Dashboard
                     </Link>
-                    <UserButton />
+                    <UserButton afterSignOutUrl="/" />
                   </>
                 ) : (
                   <>
-                    <Link href="/sign-in" className="text-sm">
+                    <Link href="/sign-in" className="site-nav-link text-sm font-medium">
                       Sign In
                     </Link>
-                    <Link
-                      href="/sign-up"
-                      className="rounded-lg bg-black px-4 py-2 text-sm text-white"
-                    >
+                    <Link href="/sign-up" className="app-button-primary px-4 py-2 text-sm">
                       Sign Up
                     </Link>
                   </>

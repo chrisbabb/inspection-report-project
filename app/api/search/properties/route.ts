@@ -1,5 +1,11 @@
+import { auth } from "@clerk/nextjs/server";
+
 import { apiError, apiSuccess, handleApiError } from "@/lib/api";
 import { searchMarketplaceProperties } from "@/lib/services/search";
+import {
+  getAppUserByClerkUserId,
+  syncClerkUserToDb,
+} from "@/lib/services/users";
 import { propertySearchSchema } from "@/lib/validators/search";
 
 export async function GET(request: Request) {
@@ -23,7 +29,17 @@ export async function GET(request: Request) {
       );
     }
 
-    const results = await searchMarketplaceProperties(parsed.data);
+    const { userId: clerkUserId } = await auth();
+
+    const appUser = clerkUserId
+      ? (await getAppUserByClerkUserId(clerkUserId)) ??
+        (await syncClerkUserToDb(clerkUserId))
+      : null;
+
+    const results = await searchMarketplaceProperties(
+      parsed.data,
+      appUser?.id ?? null,
+    );
 
     return apiSuccess({
       query: parsed.data.q,

@@ -11,6 +11,7 @@ type SearchReport = {
   summary?: string | null;
   inspectionDate: string;
   priceCents?: number;
+  hasAccess?: boolean;
 };
 
 type SearchProperty = {
@@ -40,7 +41,7 @@ type SearchResponse =
     };
 
 type Props = {
-  query: string;
+  query?: string;
 };
 
 type BoundsPayload = {
@@ -92,19 +93,73 @@ function serializeBounds(bounds: BoundsPayload) {
   return params.toString();
 }
 
+function getAddressComponent(
+  components: google.maps.GeocoderAddressComponent[] | undefined,
+  type: string,
+) {
+  return components?.find((component) => component.types.includes(type));
+}
+
+function getSearchQueryFromPlace(
+  place: google.maps.places.PlaceResult,
+  fallback: string,
+) {
+  const streetNumber = getAddressComponent(place.address_components, "street_number")
+    ?.long_name;
+  const route = getAddressComponent(place.address_components, "route")?.long_name;
+  const city =
+    getAddressComponent(place.address_components, "locality")?.long_name ??
+    getAddressComponent(place.address_components, "postal_town")?.long_name ??
+    getAddressComponent(place.address_components, "sublocality")?.long_name ??
+    "";
+  const zip = getAddressComponent(place.address_components, "postal_code")?.long_name ?? "";
+
+  if (streetNumber || route) {
+    return place.formatted_address?.trim() || fallback.trim();
+  }
+
+  if (zip && place.types?.includes("postal_code")) {
+    return zip;
+  }
+
+  if (city && (place.types?.includes("locality") || place.types?.includes("administrative_area_level_3"))) {
+    return city;
+  }
+
+  if (zip) {
+    return zip;
+  }
+
+  if (city) {
+    return city;
+  }
+
+  if (place.formatted_address?.trim()) {
+    return place.formatted_address.trim();
+  }
+
+  if (place.name?.trim()) {
+    return place.name.trim();
+  }
+
+  return fallback.trim();
+}
+
 export default function ReportsMapClient({ query }: Props) {
   const router = useRouter();
+  const normalizedQuery = typeof query === "string" ? query : "";
 
-  const [searchInput, setSearchInput] = useState(query);
+  const [searchInput, setSearchInput] = useState(normalizedQuery);
   const [results, setResults] = useState<SearchProperty[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
   const [locationResolved, setLocationResolved] = useState(false);
-  const [usingNearbyMode, setUsingNearbyMode] = useState(!query.trim());
+  const [usingNearbyMode, setUsingNearbyMode] = useState(!normalizedQuery.trim());
 
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
   const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
@@ -112,21 +167,26 @@ export default function ReportsMapClient({ query }: Props) {
   const nearbyRequestIdRef = useRef(0);
   const skipNextIdleFetchRef = useRef(false);
   const hasCenteredOnUserRef = useRef(false);
+  const shouldPanToSelectionRef = useRef(false);
 
   useEffect(() => {
-    setSearchInput(query);
-    setUsingNearbyMode(!query.trim());
-  }, [query]);
+    setSearchInput(normalizedQuery);
+    setUsingNearbyMode(!normalizedQuery.trim());
+  }, [normalizedQuery]);
 
-  const selectedProperty = useMemo(
-    () => results.find((r) => r.id === selectedPropertyId) ?? results[0] ?? null,
-    [results, selectedPropertyId],
-  );
+  const selectedProperty = useMemo(() => {
+    if (!selectedPropertyId) return null;
+    return results.find((result) => result.id === selectedPropertyId) ?? null;
+  }, [results, selectedPropertyId]);
 
-  function handleSearchSubmit(event: React.FormEvent) {
-    event.preventDefault();
-    const q = searchInput.trim();
+  function pushSearch(nextValue: string) {
+    const q = nextValue.trim();
     router.push(q ? `/?q=${encodeURIComponent(q)}` : "/");
+  }
+
+  function handleSearchSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    pushSearch(searchInput);
   }
 
   async function fetchByQuery(searchQuery: string) {
@@ -145,7 +205,7 @@ export default function ReportsMapClient({ query }: Props) {
 
       if (json.ok) {
         setResults(json.data.results);
-        setSelectedPropertyId(json.data.results[0]?.id ?? null);
+        setSelectedPropertyId(null);
       } else {
         setResults([]);
         setSelectedPropertyId(null);
@@ -184,7 +244,7 @@ export default function ReportsMapClient({ query }: Props) {
             return current;
           }
 
-          return json.data.results[0]?.id ?? null;
+          return null;
         });
       } else {
         setResults([]);
@@ -219,6 +279,53 @@ export default function ReportsMapClient({ query }: Props) {
   }, [query]);
 
   useEffect(() => {
+    let mounted = true;
+    let autocomplete: google.maps.places.Autocomplete | null = null;
+    let listener: google.maps.MapsEventListener | null = null;
+
+    async function initSearchAutocomplete() {
+      try {
+        ensureMapsConfigured();
+        await importLibrary("places");
+
+        if (!mounted || !searchInputRef.current || !window.google?.maps?.places) {
+          return;
+        }
+
+        autocomplete = new window.google.maps.places.Autocomplete(searchInputRef.current, {
+          fields: ["name", "formatted_address", "address_components", "types"],
+        });
+
+        listener = autocomplete.addListener("place_changed", () => {
+          const place = autocomplete?.getPlace();
+          if (!place) return;
+
+          const nextQuery = getSearchQueryFromPlace(
+            place,
+            searchInputRef.current?.value ?? searchInput,
+          );
+
+          if (!nextQuery) return;
+
+          setSearchInput(nextQuery);
+          pushSearch(nextQuery);
+        });
+      } catch {
+        // Keep manual search working even if autocomplete fails.
+      }
+    }
+
+    void initSearchAutocomplete();
+
+    return () => {
+      mounted = false;
+      if (listener) {
+        listener.remove();
+      }
+    };
+  }, [router]);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function initMap() {
@@ -250,6 +357,7 @@ export default function ReportsMapClient({ query }: Props) {
         map.addListener("idle", () => {
           if (!mapRef.current) return;
           if (!usingNearbyMode) return;
+
           if (skipNextIdleFetchRef.current) {
             skipNextIdleFetchRef.current = false;
             return;
@@ -338,18 +446,19 @@ export default function ReportsMapClient({ query }: Props) {
       });
 
       marker.addListener("click", () => {
+        shouldPanToSelectionRef.current = true;
         setSelectedPropertyId(property.id);
 
         const firstReport = property.reports[0];
         const content = `
-          <div style="max-width:240px;padding:4px 2px;">
+          <div style="max-width:260px;padding:4px 2px;">
             <div style="font-weight:600;margin-bottom:6px;">${property.formattedAddress}</div>
-            <div style="font-size:12px;color:#475569;margin-bottom:8px;">
+            <div style="font-size:12px;color:#475569;margin-bottom:10px;">
               ${firstReport ? `Latest inspection: ${formatInspectionDate(firstReport.inspectionDate)}` : "No published reports"}
             </div>
             ${
               firstReport
-                ? `<a href="/report/${firstReport.id}" style="display:inline-block;padding:8px 12px;border-radius:10px;background:#0284c7;color:#fff;text-decoration:none;font-weight:600;">View Listing</a>`
+                ? `<a href="/report/${firstReport.id}" style="display:inline-block;padding:8px 12px;border-radius:10px;background:#0284c7;color:#fff;text-decoration:none;font-weight:600;">Purchase</a>`
                 : ""
             }
           </div>
@@ -384,14 +493,6 @@ export default function ReportsMapClient({ query }: Props) {
   useEffect(() => {
     if (!selectedProperty) return;
 
-    const map = mapRef.current;
-    if (map) {
-      map.panTo({
-        lat: selectedProperty.lat,
-        lng: selectedProperty.lng,
-      });
-    }
-
     const card = cardRefs.current[selectedProperty.id];
     if (card) {
       card.scrollIntoView({
@@ -399,189 +500,226 @@ export default function ReportsMapClient({ query }: Props) {
         block: "nearest",
       });
     }
+
+    if (!shouldPanToSelectionRef.current) {
+      return;
+    }
+
+    shouldPanToSelectionRef.current = false;
+
+    const map = mapRef.current;
+    if (!map) return;
+
+    skipNextIdleFetchRef.current = true;
+    map.panTo({
+      lat: selectedProperty.lat,
+      lng: selectedProperty.lng,
+    });
+
+    const currentZoom = map.getZoom() ?? SEARCH_ZOOM;
+    if (currentZoom < SEARCH_ZOOM) {
+      map.setZoom(SEARCH_ZOOM);
+    }
   }, [selectedProperty]);
 
-  const emptyMessage = query.trim()
+  const emptyMessage = normalizedQuery.trim()
     ? "No matching properties were found in the marketplace for this search yet."
-    : "Move the map or allow location access to see nearby inspection reports.";
+    : "Move the map or allow location access to see nearby published inspection reports.";
 
   return (
-    <div className="min-h-[calc(100vh-72px)] bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      <div className="flex h-[calc(100vh-72px)] flex-col px-4 py-4 sm:px-6">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              Find Inspection Reports
-            </h1>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-              Search by address, city, or zip code, or browse listings directly on the map.
-            </p>
-          </div>
-
-          {!query.trim() ? (
-            <div className="text-sm text-slate-500 dark:text-slate-400">
-              {locationResolved
-                ? "Showing published reports in the current map area."
-                : "Trying to center the map on your location…"}
-            </div>
-          ) : null}
-        </div>
-
-        <form
-          onSubmit={handleSearchSubmit}
-          className="mb-4 flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 md:flex-row"
-        >
-          <input
-            type="text"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Enter address, city, or zip"
-            className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-sky-400 dark:focus:ring-sky-900/30"
-          />
-
-          <div className="flex gap-3">
-            <button
-              type="submit"
-              className="inline-flex items-center justify-center rounded-2xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-700"
-            >
-              Search
-            </button>
-
-            {query.trim() ? (
-              <button
-                type="button"
-                onClick={() => router.push("/")}
-                className="inline-flex items-center justify-center rounded-2xl border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+    <div className="market-page app-page min-h-[calc(100vh-72px)]">
+      <div className="grid h-[calc(100vh-72px)] min-h-[calc(100vh-72px)] gap-4 px-4 py-4 sm:px-6 lg:grid-cols-[400px_minmax(0,1fr)]">
+        <aside className="market-panel flex min-h-0 flex-col overflow-hidden rounded-3xl app-surface">
+          <div className="app-divider border-b p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h1 className="text-xl font-semibold">Find Inspection Reports</h1>
+                <p className="app-muted mt-1 text-sm">
+                  Search by address, city, or zip. Suggestions will appear as you type.
+                </p>
+              </div>
+              <Link
+                href="/dashboard/reports"
+                className="app-button-primary shrink-0 px-4 py-2 text-sm"
               >
-                Clear
-              </button>
+                Upload your report
+              </Link>
+            </div>
+
+            <form onSubmit={handleSearchSubmit} className="mt-4 space-y-3">
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchInput}
+                onChange={(event) => setSearchInput(event.target.value)}
+                placeholder="Enter address, city, or zip"
+                className="market-search-input w-full px-4 py-3"
+                autoComplete="off"
+              />
+
+              <div className="flex gap-3">
+                <button
+                  type="submit"
+                  className="market-search-button px-5 py-3 text-sm"
+                >
+                  Search
+                </button>
+
+                {query.trim() ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchInput("");
+                      pushSearch("");
+                    }}
+                    className="app-button-secondary px-5 py-3 text-sm"
+                  >
+                    Clear
+                  </button>
+                ) : null}
+              </div>
+            </form>
+
+            <div className="mt-4 flex items-center justify-between gap-3 text-sm">
+              <span className="font-medium text-[var(--text)]">
+                {normalizedQuery.trim() ? "Search Results" : "Listings in View"}
+              </span>
+              <span className="app-muted">
+                {loading ? "Loading…" : `${results.length} shown`}
+              </span>
+            </div>
+
+            {!normalizedQuery.trim() ? (
+              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                {locationResolved
+                  ? "Showing published reports in the current map area."
+                  : "Trying to center the map on your location…"}
+              </p>
             ) : null}
           </div>
-        </form>
 
-        <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[380px_minmax(0,1fr)]">
-          <div className="min-h-0 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <div className="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-base font-semibold">
-                  {query.trim() ? "Search Results" : "Listings in View"}
-                </h2>
-                <span className="text-sm text-slate-500 dark:text-slate-400">
-                  {loading ? "Loading…" : `${results.length} shown`}
-                </span>
+          <div className="min-h-0 flex-1 overflow-y-auto p-4">
+            {loading && results.length === 0 ? (
+              <div className="app-surface-subtle rounded-2xl p-4 text-sm app-muted">
+                Loading results...
               </div>
-            </div>
+            ) : results.length === 0 ? (
+              <div className="app-surface-subtle space-y-3 rounded-2xl p-4">
+                <div className="font-medium">No properties found</div>
+                <p className="app-muted text-sm">
+                  {emptyMessage}
+                </p>
+                <Link
+                  href="/dashboard/reports"
+                  className="market-purchase-button px-4 py-2 text-sm"
+                >
+                  Upload your report
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {results.map((property) => {
+                  const isSelected = property.id === selectedPropertyId;
 
-            <div className="h-full overflow-y-auto p-4">
-              {loading && results.length === 0 ? (
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
-                  Loading results...
-                </div>
-              ) : results.length === 0 ? (
-                <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
-                  <div className="font-medium">No properties found</div>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                    {emptyMessage}
-                  </p>
-                  <Link
-                    href="/dashboard/reports"
-                    className="inline-flex rounded-2xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-700"
-                  >
-                    Add an Inspection Report
-                  </Link>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {results.map((property) => {
-                    const isSelected = property.id === selectedPropertyId;
-
-                    return (
-                      <div
-                        key={property.id}
-                        ref={(el) => {
-                          cardRefs.current[property.id] = el;
+                  return (
+                    <div
+                      key={property.id}
+                      ref={(element) => {
+                        cardRefs.current[property.id] = element;
+                      }}
+                      className={`${isSelected ? "app-surface-selected" : "market-listing-card"} rounded-3xl p-4 transition`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          shouldPanToSelectionRef.current = true;
+                          setSelectedPropertyId(property.id);
                         }}
-                        className={`rounded-3xl border p-4 transition ${
-                          isSelected
-                            ? "border-sky-400 bg-sky-50 shadow-sm dark:border-sky-500 dark:bg-sky-950/30"
-                            : "border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
-                        }`}
+                        className="w-full text-left"
                       >
-                        <button
-                          type="button"
-                          onClick={() => setSelectedPropertyId(property.id)}
-                          className="w-full text-left"
-                        >
-                          <div className="text-base font-semibold">
-                            {property.formattedAddress}
-                          </div>
-                          <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                            {property.city}, {property.state} {property.zip}
-                          </div>
-                        </button>
+                        <div className="text-base font-semibold">
+                          {property.formattedAddress}
+                        </div>
+                        <div className="app-muted mt-1 text-sm">
+                          {property.city}, {property.state} {property.zip}
+                        </div>
+                      </button>
 
-                        <div className="mt-4 space-y-3">
-                          {property.reports.length > 0 ? (
-                            property.reports.map((report) => (
-                              <div
-                                key={report.id}
-                                className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950"
-                              >
-                                <div className="flex items-start justify-between gap-3">
-                                  <div>
-                                    <div className="text-sm font-medium">
-                                      {report.title?.trim() || "Inspection Report"}
-                                    </div>
-                                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                                      {formatInspectionDate(report.inspectionDate)}
-                                    </div>
+                      <div className="mt-4 space-y-3">
+                        {property.reports.length > 0 ? (
+                          property.reports.map((report) => (
+                            <div
+                              key={report.id}
+                              className="market-report-row rounded-2xl p-3"
+                            >
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="min-w-0">
+                                  <div className="text-sm font-medium">
+                                    {report.title?.trim() || "Inspection Report"}
                                   </div>
-
-                                  <div className="text-sm font-semibold">
-                                    {formatPrice(report.priceCents)}
+                                  <div className="app-muted mt-1 text-xs">
+                                    {formatInspectionDate(report.inspectionDate)}
                                   </div>
                                 </div>
 
-                                <div className="mt-3">
+                                <div className="ml-auto flex items-center gap-3">
+                                  {report.hasAccess ? (
+                                    <div className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-300">
+                                      Owned
+                                    </div>
+                                  ) : (
+                                    <div className="text-sm font-semibold">
+                                      {formatPrice(report.priceCents)}
+                                    </div>
+                                  )}
                                   <Link
                                     href={`/report/${report.id}`}
-                                    className="inline-flex rounded-2xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-700"
+                                    className="market-purchase-button px-4 py-2 text-sm"
                                   >
-                                    View Listing
+                                    {report.hasAccess ? "View Report" : "Purchase"}
                                   </Link>
                                 </div>
                               </div>
-                            ))
-                          ) : (
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
-                              No inspection reports available yet.
                             </div>
-                          )}
-                        </div>
+                          ))
+                        ) : (
+                          <div className="market-empty-card rounded-2xl p-3 text-sm">
+                            No home inspection reports available for this address.
+                          </div>
+                        )}
                       </div>
-                    );
-                  })}
-                </div>
-              )}
+
+                      <div className="mt-4">
+                        <Link
+                          href={`/dashboard/reports?propertyId=${property.id}`}
+                          className="app-link text-sm font-medium"
+                        >
+                          Add another report to this property
+                        </Link>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </aside>
+
+        <section className="app-surface relative min-h-0 overflow-hidden rounded-3xl">
+          <div ref={mapContainerRef} className="h-full min-h-[520px] w-full" />
+
+          {!mapReady && !mapError ? (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-[color:color-mix(in_oklab,var(--surface)_82%,transparent)] text-sm app-muted">
+              Loading map...
             </div>
-          </div>
+          ) : null}
 
-          <div className="relative min-h-0 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <div ref={mapContainerRef} className="h-full min-h-[520px] w-full" />
-
-            {!mapReady && !mapError ? (
-              <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-white/80 text-sm text-slate-500 dark:bg-slate-950/80 dark:text-slate-400">
-                Loading map...
-              </div>
-            ) : null}
-
-            {mapError ? (
-              <div className="absolute left-4 top-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-sm dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-300">
-                {mapError}
-              </div>
-            ) : null}
-          </div>
-        </div>
+          {mapError ? (
+            <div className="alert-danger absolute left-4 top-4 rounded-2xl px-4 py-3 text-sm shadow-sm">
+              {mapError}
+            </div>
+          ) : null}
+        </section>
       </div>
     </div>
   );

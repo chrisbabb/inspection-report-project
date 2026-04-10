@@ -40,9 +40,7 @@ export default function PurchaseReportButton({
 
       window.location.href = data.checkoutUrl;
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Unable to start checkout",
-      );
+      setError(err instanceof Error ? err.message : "Unable to start checkout");
     } finally {
       setLoading(false);
     }
@@ -54,16 +52,12 @@ export default function PurchaseReportButton({
         type="button"
         onClick={startCheckout}
         disabled={loading}
-        className="inline-flex w-full items-center justify-center rounded-2xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60"
+        className="app-button-primary w-full px-5 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
       >
         {loading ? "Redirecting to checkout…" : buttonLabel}
       </button>
 
-      {error ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-300">
-          {error}
-        </div>
-      ) : null}
+      {error ? <div className="alert-danger rounded-2xl px-4 py-3 text-sm">{error}</div> : null}
     </div>
   );
 }

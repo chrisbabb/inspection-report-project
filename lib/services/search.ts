@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+
 import { db } from "@/lib/db";
 import type { PropertySearchInput } from "@/lib/validators/search";
 
@@ -85,7 +86,10 @@ function buildQueryWhere(query: string): Prisma.PropertyWhereInput | undefined {
   };
 }
 
-export async function searchMarketplaceProperties(input: PropertySearchInput) {
+export async function searchMarketplaceProperties(
+  input: PropertySearchInput,
+  buyerUserId?: string | null,
+) {
   const query = input.q.trim();
 
   const bounds =
@@ -124,16 +128,9 @@ export async function searchMarketplaceProperties(input: PropertySearchInput) {
   const where: Prisma.PropertyWhereInput =
     whereClauses.length === 1 ? whereClauses[0] : { AND: whereClauses };
 
-  return db.property.findMany({
+  const properties = await db.property.findMany({
     where,
-    orderBy: [
-      {
-        updatedAt: "desc",
-      },
-      {
-        createdAt: "desc",
-      },
-    ],
+    orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
     select: {
       id: true,
       placeId: true,
@@ -159,9 +156,40 @@ export async function searchMarketplaceProperties(input: PropertySearchInput) {
           status: true,
           createdAt: true,
           priceCents: true,
+          ...(buyerUserId
+            ? {
+                accesses: {
+                  where: {
+                    buyerUserId,
+                    status: "ACTIVE",
+                  },
+                  select: {
+                    id: true,
+                  },
+                },
+              }
+            : {}),
         },
       },
     },
     take: query ? 100 : 250,
   });
+
+  return properties.map((property) => ({
+    ...property,
+    reports: property.reports.map((report) => ({
+      id: report.id,
+      title: report.title,
+      summary: report.summary,
+      inspectionDate: report.inspectionDate,
+      status: report.status,
+      createdAt: report.createdAt,
+      priceCents: report.priceCents,
+      hasAccess:
+        buyerUserId && "accesses" in report
+          ? Array.isArray((report as { accesses?: { id: string }[] }).accesses) &&
+            ((report as { accesses?: { id: string }[] }).accesses?.length ?? 0) > 0
+          : false,
+    })),
+  }));
 }

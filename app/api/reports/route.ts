@@ -4,12 +4,25 @@ import { requireAppUser } from "@/lib/authz";
 import { createDraftReport } from "@/lib/services/reports";
 import { reportCreateSchema } from "@/lib/validators/report";
 
+function hasActiveSellerSubscription(status: string | null | undefined) {
+  const normalized = status?.toLowerCase();
+  return normalized === "active" || normalized === "trialing";
+}
+
 export async function POST(request: Request) {
   try {
     const authResult = await requireAppUser();
 
     if (!authResult.ok) {
       return authResult.response;
+    }
+
+    if (!hasActiveSellerSubscription(authResult.appUser.subscriptionStatus)) {
+      return apiError(
+        "FORBIDDEN",
+        "An active subscription is required to add a report",
+        403,
+      );
     }
 
     const body = await request.json();

@@ -143,15 +143,15 @@ export default async function ReportDetailPage({
   const canPurchase = isPublished && isLoggedIn && !hasAccess && !isSeller && !isAdmin;
 
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      <div className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+    <main className="app-page min-h-screen">
+      <div className="app-surface app-divider rounded-none border-x-0 border-t-0 shadow-none">
         <div className="mx-auto max-w-7xl px-6 py-4">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="flex flex-wrap items-center gap-3">
                 <Link
                   href="/"
-                  className="text-sm text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300"
+                  className="app-link text-sm"
                 >
                   ← Back to marketplace
                 </Link>
@@ -167,13 +167,13 @@ export default async function ReportDetailPage({
                 {report.title?.trim() || "Home Inspection Report"}
               </h1>
 
-              <p className="text-sm text-slate-600 dark:text-slate-400">
+              <p className="app-muted text-sm">
                 {report.property.formattedAddress}
               </p>
             </div>
 
             <div className="text-right">
-              <div className="text-sm text-slate-500 dark:text-slate-400">
+              <div className="app-subtle text-sm">
                 Report price
               </div>
               <div className="text-3xl font-bold">
@@ -186,12 +186,12 @@ export default async function ReportDetailPage({
 
       <div className="mx-auto grid max-w-7xl gap-6 px-6 py-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <section className="space-y-6">
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="app-surface rounded-3xl p-6">
             <h2 className="text-lg font-semibold">Property Details</h2>
 
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              <div className="app-surface-subtle rounded-2xl p-4">
+                <div className="app-subtle text-xs font-semibold uppercase tracking-wide">
                   Address
                 </div>
                 <div className="mt-2 text-sm">
@@ -202,8 +202,8 @@ export default async function ReportDetailPage({
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              <div className="app-surface-subtle rounded-2xl p-4">
+                <div className="app-subtle text-xs font-semibold uppercase tracking-wide">
                   Inspection Date
                 </div>
                 <div className="mt-2 text-sm">
@@ -211,8 +211,8 @@ export default async function ReportDetailPage({
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              <div className="app-surface-subtle rounded-2xl p-4">
+                <div className="app-subtle text-xs font-semibold uppercase tracking-wide">
                   Uploaded
                 </div>
                 <div className="mt-2 text-sm">
@@ -220,8 +220,8 @@ export default async function ReportDetailPage({
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              <div className="app-surface-subtle rounded-2xl p-4">
+                <div className="app-subtle text-xs font-semibold uppercase tracking-wide">
                   Published
                 </div>
                 <div className="mt-2 text-sm">
@@ -231,31 +231,31 @@ export default async function ReportDetailPage({
             </div>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="app-surface rounded-3xl p-6">
             <h2 className="text-lg font-semibold">Report Summary</h2>
 
-            <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-950">
+            <div className="mt-4 app-surface-subtle rounded-2xl p-5">
               {report.summary?.trim() ? (
-                <p className="whitespace-pre-wrap text-sm leading-6 text-slate-700 dark:text-slate-300">
+                <p className="whitespace-pre-wrap text-sm leading-6">
                   {report.summary}
                 </p>
               ) : (
-                <p className="text-sm text-slate-500 dark:text-slate-400">
+                <p className="app-subtle text-sm">
                   No summary has been added yet.
                 </p>
               )}
             </div>
 
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              <div className="app-surface-subtle rounded-2xl p-4">
+                <div className="app-subtle text-xs font-semibold uppercase tracking-wide">
                   Extraction Status
                 </div>
                 <div className="mt-2 text-sm">{report.extractionStatus}</div>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              <div className="app-surface-subtle rounded-2xl p-4">
+                <div className="app-subtle text-xs font-semibold uppercase tracking-wide">
                   Seller
                 </div>
                 <div className="mt-2 text-sm">
@@ -265,11 +265,11 @@ export default async function ReportDetailPage({
             </div>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="app-surface rounded-3xl p-6">
             <h2 className="text-lg font-semibold">Included Files</h2>
 
             {report.files.length === 0 ? (
-              <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
+              <div className="mt-4 app-surface-subtle rounded-2xl p-4 text-sm app-subtle">
                 No report files have been uploaded yet.
               </div>
             ) : (
@@ -277,12 +277,12 @@ export default async function ReportDetailPage({
                 {report.files.map((file) => (
                   <div
                     key={file.id}
-                    className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950"
+                    className="app-surface-subtle rounded-2xl p-4"
                   >
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <div className="font-medium">{file.originalFilename}</div>
-                        <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                        <div className="app-subtle mt-1 text-sm">
                           {file.kind} · {file.mimeType}
                           {typeof file.pageCount === "number"
                             ? ` · ${file.pageCount} pages`
@@ -290,7 +290,7 @@ export default async function ReportDetailPage({
                         </div>
                       </div>
 
-                      <div className="text-sm text-slate-500 dark:text-slate-400">
+                      <div className="app-subtle text-sm">
                         {(file.sizeBytes / 1024 / 1024).toFixed(2)} MB
                       </div>
                     </div>
@@ -302,26 +302,26 @@ export default async function ReportDetailPage({
         </section>
 
         <aside className="space-y-6">
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="app-surface rounded-3xl p-6">
             <h2 className="text-lg font-semibold">Access</h2>
 
             <div className="mt-4 space-y-4">
               {!isPublished ? (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-300">
+                <div className="alert-warning rounded-2xl px-4 py-3 text-sm">
                   This report is not currently published for marketplace purchase.
                 </div>
               ) : null}
 
               {!isLoggedIn ? (
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-950">
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                <div className="app-surface-subtle rounded-2xl px-4 py-4">
+                  <p className="app-muted text-sm">
                     Sign in to purchase and view this report.
                   </p>
 
                   <div className="mt-4">
                     <Link
                       href={`/sign-in?redirect_url=${encodeURIComponent(`/report/${report.id}`)}`}
-                      className="inline-flex w-full items-center justify-center rounded-2xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-700"
+                      className="app-button-primary w-full px-5 py-3 text-sm"
                     >
                       Sign In to Continue
                     </Link>
@@ -337,17 +337,17 @@ export default async function ReportDetailPage({
               )}
 
               {canPurchase ? (
-                <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">
+                <p className="app-subtle text-xs leading-5">
                   Secure checkout grants view-only access to this inspection report.
                 </p>
               ) : null}
             </div>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="app-surface rounded-3xl p-6">
             <h2 className="text-lg font-semibold">What You’ll Get</h2>
 
-            <ul className="mt-4 space-y-3 text-sm text-slate-600 dark:text-slate-400">
+            <ul className="app-muted mt-4 space-y-3 text-sm">
               <li>Full inspection document access</li>
               <li>Secure view-only delivery</li>
               <li>Short-lived signed file access</li>
@@ -355,19 +355,19 @@ export default async function ReportDetailPage({
             </ul>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="app-surface rounded-3xl p-6">
             <h2 className="text-lg font-semibold">Coordinates</h2>
 
             <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              <div className="app-surface-subtle rounded-2xl p-4">
+                <div className="app-subtle text-xs font-semibold uppercase tracking-wide">
                   Latitude
                 </div>
                 <div className="mt-2 text-sm">{report.property.lat}</div>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              <div className="app-surface-subtle rounded-2xl p-4">
+                <div className="app-subtle text-xs font-semibold uppercase tracking-wide">
                   Longitude
                 </div>
                 <div className="mt-2 text-sm">{report.property.lng}</div>

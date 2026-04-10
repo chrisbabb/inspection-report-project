@@ -1,6 +1,6 @@
-import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+
+import { requireAppUser } from "@/lib/authz";
 import { createReportCheckoutSession } from "@/lib/services/purchases";
 
 type RouteContext = {
@@ -11,28 +11,17 @@ type RouteContext = {
 
 export async function POST(_: Request, context: RouteContext) {
   try {
-    const { userId: clerkUserId } = await auth();
+    const authResult = await requireAppUser();
 
-    if (!clerkUserId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!authResult.ok) {
+      return authResult.response;
     }
 
     const { reportId } = await context.params;
 
-    const user = await prisma.user.findUnique({
-      where: { clerkUserId },
-      select: {
-        id: true,
-      },
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
     const session = await createReportCheckoutSession({
       reportId,
-      buyerUserId: user.id,
+      buyerUserId: authResult.appUser.id,
     });
 
     return NextResponse.json(session);

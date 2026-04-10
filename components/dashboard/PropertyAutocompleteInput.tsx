@@ -16,7 +16,7 @@ export type SelectedPropertyAddress = {
 
 type Props = {
   value: string;
-  onChange: (value: string) => void;
+  onInputChange: (value: string) => void;
   onSelect: (address: SelectedPropertyAddress) => void;
 };
 
@@ -29,15 +29,25 @@ function getAddressComponent(
 
 export default function PropertyAutocompleteInput({
   value,
-  onChange,
+  onInputChange,
   onSelect,
 }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const ignoreNextInputEventRef = useRef(false);
+
+  useEffect(() => {
+    if (!inputRef.current) return;
+
+    if (inputRef.current.value !== value) {
+      inputRef.current.value = value;
+    }
+  }, [value]);
 
   useEffect(() => {
     let mounted = true;
     let autocomplete: google.maps.places.Autocomplete | null = null;
-    let listener: google.maps.MapsEventListener | null = null;
+    let placeChangedListener: google.maps.MapsEventListener | null = null;
+    let nativeInputListener: ((event: Event) => void) | null = null;
 
     async function init() {
       await loadPlacesLibrary();
@@ -46,12 +56,25 @@ export default function PropertyAutocompleteInput({
         return;
       }
 
-      autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
+      const input = inputRef.current;
+
+      nativeInputListener = () => {
+        if (ignoreNextInputEventRef.current) {
+          ignoreNextInputEventRef.current = false;
+          return;
+        }
+
+        onInputChange(input.value);
+      };
+
+      input.addEventListener("input", nativeInputListener);
+
+      autocomplete = new window.google.maps.places.Autocomplete(input, {
         fields: ["place_id", "formatted_address", "address_components", "geometry"],
         types: ["address"],
       });
 
-      listener = autocomplete.addListener("place_changed", () => {
+      placeChangedListener = autocomplete.addListener("place_changed", () => {
         const place = autocomplete?.getPlace();
 
         if (
@@ -93,7 +116,9 @@ export default function PropertyAutocompleteInput({
           lng: place.geometry.location.lng(),
         };
 
-        onChange(place.formatted_address);
+        ignoreNextInputEventRef.current = true;
+        input.value = place.formatted_address;
+
         onSelect(selected);
       });
     }
@@ -102,18 +127,21 @@ export default function PropertyAutocompleteInput({
 
     return () => {
       mounted = false;
-      if (listener) {
-        listener.remove();
+
+      if (placeChangedListener) {
+        placeChangedListener.remove();
+      }
+
+      if (nativeInputListener && inputRef.current) {
+        inputRef.current.removeEventListener("input", nativeInputListener);
       }
     };
-  }, [onChange, onSelect]);
+  }, [onInputChange, onSelect]);
 
   return (
     <input
       ref={inputRef}
-      className="w-full rounded-lg border px-3 py-2"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
+      className="dashboard-input"
       placeholder="Start typing an address..."
       autoComplete="off"
     />

@@ -12,12 +12,9 @@ export default function ThemeToggle() {
     const saved = window.localStorage.getItem("app-theme");
     const initialTheme: ThemeMode = saved === "dark" ? "dark" : "light";
 
-    document.documentElement.className = document.documentElement.className
-      .replace(/\bdark\b/g, "")
-      .replace(/\blight\b/g, "")
-      .trim();
-
+    document.documentElement.classList.remove("dark", "light");
     document.documentElement.classList.add(initialTheme);
+
     setTheme(initialTheme);
     setMounted(true);
   }, []);
@@ -35,7 +32,8 @@ export default function ThemeToggle() {
     <button
       type="button"
       onClick={() => setAppTheme(theme === "dark" ? "light" : "dark")}
-      className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+      className="app-button-secondary px-3 py-2 text-sm"
+      aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
     >
       {theme === "dark" ? "Light Mode" : "Dark Mode"}
     </button>
